@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Block Shooter</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+      font-family: sans-serif;
+      color: white;
+    }
+    #game {
+      position: relative;
+      width: 600px;
+      height: 400px;
+      margin: 20px auto;
+      background: #111;
+      border: 2px solid white;
+    }
+    #player {
+      position: absolute;
+      width: 40px;
+      height: 20px;
+      background: lime;
+      bottom: 10px;
+      left: 280px;
+    }
+    .bullet {
+      position: absolute;
+      width: 4px;
+      height: 10px;
+      background: yellow;
+    }
+    .alien {
+      position: absolute;
+      width: 40px;
+      height: 20px;
+      background: red;
+      top: 20px;
+    }
+    .alien-bullet {
+      position: absolute;
+      width: 4px;
+      height: 10px;
+      background: cyan;
+    }
+    #scoreboard {
+      text-align: center;
+      font-size: 18px;
+      margin-top: 10px;
+    }
+    #gameover {
+      text-align: center;
+      font-size: 28px;
+      color: red;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div id="player"></div>
+  </div>
+  <div id="scoreboard">Score: 0</div>
+  <div id="gameover">Game Over!</div>
+
+  <script>
+    const game = document.getElementById("game");
+    const player = document.getElementById("player");
+    const scoreboard = document.getElementById("scoreboard");
+    const gameover = document.getElementById("gameover");
+
+    let playerX = 280;
+    let canShoot = true;
+    let score = 0;
+    let playerAlive = true;
+
+    const aliens = [];
+    const playerBullets = [];
+    const alienBullets = [];
+
+    // Create 3 aliens
+    for (let i = 0; i < 3; i++) {
+      const alien = document.createElement("div");
+      alien.classList.add("alien");
+      alien.style.left = (i * 200 + 20) + "px";
+      alien.dataset.dir = "1"; // Moving right
+      game.appendChild(alien);
+      aliens.push(alien);
+    }
+
+    // Move aliens left/right
+    setInterval(() => {
+      aliens.forEach(alien => {
+        let x = parseInt(alien.style.left);
+        let dir = parseInt(alien.dataset.dir);
+        x += dir * 5;
+        if (x <= 0 || x >= game.clientWidth - 40) {
+          dir *= -1;
+        }
+        alien.style.left = x + "px";
+        alien.dataset.dir = dir;
+
+        // Randomly shoot
+        if (Math.random() < 0.01) {
+          shootAlienBullet(alien);
+        }
+      });
+    }, 50);
+
+    // Handle player movement and shooting
+    document.addEventListener("keydown", (e) => {
+      if (!playerAlive) return;
+      if (e.key === "ArrowLeft") {
+        playerX = Math.max(0, playerX - 15);
+      } else if (e.key === "ArrowRight") {
+        playerX = Math.min(game.clientWidth - 40, playerX + 15);
+      } else if (e.key === " " && canShoot) {
+        shootPlayerBullet();
+        canShoot = false;
+        setTimeout(() => canShoot = true, 300);
+      }
+      player.style.left = playerX + "px";
+    });
+
+    function shootPlayerBullet() {
+      const bullet = document.createElement("div");
+      bullet.classList.add("bullet");
+      bullet.style.left = playerX + 18 + "px";
+      bullet.style.bottom = "30px";
+      game.appendChild(bullet);
+      playerBullets.push(bullet);
+    }
+
+    function shootAlienBullet(alien) {
+      const bullet = document.createElement("div");
+      bullet.classList.add("alien-bullet");
+      bullet.style.left = parseInt(alien.style.left) + 18 + "px";
+      bullet.style.top = "40px";
+      game.appendChild(bullet);
+      alienBullets.push(bullet);
+    }
+
+    // Game loop for bullet movement and collisions
+    setInterval(() => {
+      if (!playerAlive) return;
+
+      // Move player bullets
+      playerBullets.forEach((bullet, i) => {
+        let bottom = parseInt(bullet.style.bottom);
+        if (bottom > game.clientHeight) {
+          bullet.remove();
+          playerBullets.splice(i, 1);
+        } else {
+          bullet.style.bottom = bottom + 10 + "px";
+
+          // Check collision with aliens
+          aliens.forEach(alien => {
+            if (isColliding(bullet, alien)) {
+              bullet.remove();
+              playerBullets.splice(i, 1);
+              score++;
+              scoreboard.textContent = "Score: " + score;
+
+              // Move alien to new random location
+              alien.style.left = Math.random() * (game.clientWidth - 40) + "px";
+            }
+          });
+        }
+      });
+
+      // Move alien bullets
+      alienBullets.forEach((bullet, i) => {
+        let top = parseInt(bullet.style.top);
+        if (top > game.clientHeight) {
+          bullet.remove();
+          alienBullets.splice(i, 1);
+        } else {
+          bullet.style.top = top + 6 + "px";
+
+          // Check collision with player
+          if (isColliding(bullet, player)) {
+            bullet.remove();
+            alienBullets.splice(i, 1);
+            endGame();
+          }
+        }
+      });
+    }, 30);
+
+    function isColliding(a, b) {
+      const aRect = a.getBoundingClientRect();
+      const bRect = b.getBoundingClientRect();
+      return !(
+        aRect.top > bRect.bottom ||
+        aRect.bottom < bRect.top ||
+        aRect.right < bRect.left ||
+        aRect.left > bRect.right
+      );
+    }
+
+    function endGame() {
+      playerAlive = false;
+      gameover.style.display = "block";
+    }
+  </script>
+</body>
+</html>
